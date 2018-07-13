@@ -1,0 +1,50 @@
+---
+
+# shortcut variable
+- set_fact:
+    k8s_name: "{{ k8s_config1.name }}"
+
+- debug: msg="Deploy {{ k8s_name }} ..."
+
+- set_fact:
+    k8s_config_file: "{% if k8s_config1.k8s_config_file is defined %}{{ k8s_config1.k8s_config_file }}{% else %}{{ k8s_config1.name }}.yml{% endif %}"
+
+- local_action: stat path="{{ k8s_config_file_path }}/{{ k8s_config_file }}.j2"
+  become: no # no need to sudo on local machine for this
+  register: k8s_config_j2
+
+- import_tasks: cleanup_tmp.yml
+
+- name: "Create tmp directory"
+  file:
+    path: "{{ k8s_config_tmp_path }}"
+    state: directory
+    mode: 0700
+
+- name: "Set template variables"
+  set_fact:
+    k8s_var: "{{ k8s_config1.var | default(omit) }}"
+
+- name: "Build config from template"
+  template:
+    src: "{{ k8s_config_file_path }}/{{ k8s_config_file }}.j2"
+    dest: "{{ k8s_config_tmp_path }}/config.tmp.yml"
+  when: k8s_config_j2.stat.exists
+
+- name: "Copy config as is"
+  copy:
+    src: "{{ k8s_config_file_path }}/{{ k8s_config_file }}"
+    dest: "{{ k8s_config_tmp_path }}/config.tmp.yml"
+  when: not k8s_config_j2.stat.exists
+
+- name: "Check if configmap/secret exists"
+  shell: "./kubectl --namespace={{ k8s_namespace }} --kubeconfig={{ k8s_config1.k8s_cluster_config_filename | default(k8s_cluster_config_filename) }} get {{ k8s_config1.k8s_kind|default('configmaps') }}/{{ k8s_config1.k8s_configmap_name }}"
+  ignore_errors: yes
+  register: k8s_configmap_exists
+  when: k8s_config1.k8s_configmap_name is defined
+
+- name: "K8s config deploy"
+  shell: "./kubectl --namespace={{ k8s_namespace }} --kubeconfig={{ k8s_config1.k8s_cluster_config_filename | default(k8s_cluster_config_filename) }} apply -f {{ k8s_config_tmp_path }}/config.tmp.yml"
+  when: k8s_config1.k8s_configmap_name is not defined or k8s_configmap_exists.rc == 1
+
+- import_tasks: cleanup_tmp.yml
