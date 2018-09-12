@@ -22,3 +22,6 @@ k8s_namespace: ""
 
 # optional variable to temporary limit config list to one config (by name)
 #k8s_config_name: "config-name"
+
+# optional: in this case the previous job is deleted before apply is run. This is useful (only) for jobs
+#replace: true

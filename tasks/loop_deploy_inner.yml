@@ -37,6 +37,11 @@
     dest: "{{ k8s_config_tmp_path }}/config.tmp.yml"
   when: not k8s_config_j2.stat.exists
 
+- name: "Remove job if replace is defined"
+  shell: "./kubectl --namespace={{ k8s_namespace }} --kubeconfig={{ k8s_config1.k8s_cluster_config_filename | default(k8s_cluster_config_filename) }} delete {{ k8s_config1.k8s_kind|default('jobs') }}/{{ k8s_name }}"
+  ignore_errors: yes
+  when: k8s_config1.replace is defined
+
 - name: "Check if configmap/secret exists"
   shell: "./kubectl --namespace={{ k8s_namespace }} --kubeconfig={{ k8s_config1.k8s_cluster_config_filename | default(k8s_cluster_config_filename) }} get {{ k8s_config1.k8s_kind|default('configmaps') }}/{{ k8s_config1.k8s_configmap_name }}"
   ignore_errors: yes
