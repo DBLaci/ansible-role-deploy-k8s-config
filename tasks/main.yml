@@ -2,7 +2,9 @@
 
 # deploy one config
 - name: Deploy one service
-  include_tasks: loop_deploy_inner.yml k8s_config1="{{ k8s_config }}"
+  include_tasks: loop_deploy_inner.yml
+  vars:
+    k8s_config1: "{{ k8s_config }}"
   when: k8s_config is defined
 
 # deploy multiple config
